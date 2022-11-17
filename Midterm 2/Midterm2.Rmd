@@ -1,0 +1,360 @@
+---
+title: "Midterm-2"
+author: "Tilekbek Zhoroev"
+date: '2022-04-06'
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
+```
+
+```{r}
+library(readr)
+EVI_Data <- read_csv("EVI_Data.csv")
+EVI_Data$Date<-as.Date(with(EVI_Data,paste(Year,Month,Day,sep="-")),"%Y-%m-%d")
+```
+
+```{r}
+Y = EVI_Data[EVI_Data$Year == 2006,]$EVI; time = EVI_Data[EVI_Data$Year == 2006,]$DOY; years = EVI_Data$Year;  yrs = years - years[1] + 1; uniq_years = unique(yrs); num_years = length(uniq_years); N = length(Y)
+ind = order(time)
+time = time[ind]
+Y = Y[ind]
+```
+```{r}
+plot(time,Y,xlab="time",ylab="EVI",cex.lab=1.5,cex.axis=1.5)
+```
+
+
+```{r}
+evi_model <- "model{
+
+   # Likelihood
+   for(i in 1:n){
+      Y[i] ~ dnorm(mean[i],taum)
+      mean[i] <- beta0 + 1/(1+exp(-beta2*(t[i]-beta1))) - 1/(1+exp(-beta4*(t[i]-beta3)))
+   }
+
+   # Prior
+   beta1  ~ dnorm(mu1,tau1)T(0,)
+   beta2 ~ dnorm(mu2,tau2)T(0,) 
+   beta3 ~ dnorm(mu3,tau3)T(0,)  
+   beta4 ~ dnorm(mu4,tau4)T(0,)
+   mu1 ~ dunif(0, 183)
+   mu3 ~ dunif(182, 360)
+   mu2 ~ dunif(0.1, 20)
+   mu4 ~ dunif(0.1, 20)
+   beta0 ~dnorm(0,0.01)T(0,)
+   taum ~ dgamma(0.1,0.1)
+   tau1 ~ dgamma(0.1,0.1)
+   tau2 ~ dgamma(0.1,0.1)
+   tau3 ~ dgamma(0.1,0.1)
+   tau4 ~ dgamma(0.1,0.1)
+  }"
+   library(rjags)
+   dat    <- list(Y=Y,n=N,t =time)
+   init   <- list(mu1=96, mu3 = 271, mu2 = 5, mu4 = 5)
+   model  <- jags.model(textConnection(evi_model),
+                        inits=init,data = dat,n.chains=2,quiet=TRUE)
+
+   update(model, 10000, progress.bar="none")
+
+   samp   <- coda.samples(model, 
+             variable.names=c("mean","beta0","beta1","beta2","beta3","beta4"), 
+             n.iter=20000, progress.bar="none")
+   sum <- summary(samp)
+   q <- sum$quantiles
+
+   plot(time,Y,xlab="time",ylab="EVI",
+        cex.lab=1.5,cex.axis=1.5)
+
+   lines(time,q[6:dim(q)[1],1],col=2,lty=2) # 0.025 quantile (lower bound)
+   lines(time,q[6:dim(q)[1],3],col=2,lty=1) # 0.500 quantile (median)
+   lines(time,q[6:dim(q)[1],5],col=2,lty=2) # 0.975 quantile (upper bound)
+
+   legend("topleft",c("Median","95% interval"),
+          lty=1:2,col=2,bg=gray(1),inset=0.01,cex=1)
+```
+```{r}
+Y = EVI_Data$EVI; time = EVI_Data$DOY; years = EVI_Data$Year;  yrs = years - years[1] + 1; uniq_years = unique(years); num_years = length(uniq_years); N = length(Y)
+ind = order(time)
+time = time[ind]
+Y = Y[ind]
+   dat    <- list(Y=Y,n=N,t =time)
+   init   <- list(mu1=96, mu3 = 271, mu2 = 5, mu4 = 5)
+   model  <- jags.model(textConnection(evi_model), inits=init,data = dat,n.chains=2,quiet=TRUE)
+   update(model, 10000, progress.bar="none")
+   samp   <- coda.samples(model, 
+             variable.names=c("beta0","beta1","beta2","beta3","beta4"), 
+             n.iter=20000, progress.bar="none")
+```
+
+
+```{r}
+plot(samp)
+```
+
+```{r}
+effectiveSize(samp)
+gelman.diag(samp)
+geweke.diag(samp[[1]])
+```
+
+```{r}
+evi_model <- "model{
+
+   # Likelihood
+   for(i in 1:n){
+      Y[i] ~ dnorm(mean[i],taum)
+      mean[i] <- beta0 + 1/(1+exp(-beta2*(t[i]-beta1))) - 1/(1+exp(-beta4*(t[i]-beta3)))
+   }
+
+   # Prior
+   beta1  ~ dnorm(mu1,tau1)T(0,)
+   beta2 ~ dnorm(mu2,tau2)T(0,) 
+   beta3 ~ dnorm(mu3,tau3)T(0,)  
+   beta4 ~ dnorm(mu4,tau4)T(0,)
+   mu1 ~ dunif(0, 183)
+   mu3 ~ dunif(182, 360)
+   mu2 ~ dunif(0.1, 20)
+   mu4 ~ dunif(0.1, 20)
+   beta0 ~dnorm(0,0.01)T(0,)
+   taum ~ dgamma(0.1,0.1)
+   tau1 ~ dgamma(0.1,0.1)
+   tau2 ~ dgamma(0.1,0.1)
+   tau3 ~ dgamma(0.1,0.1)
+   tau4 ~ dgamma(0.1,0.1)
+   # WAIC calculations
+   for(i in 1:n){
+     like[i] = dnorm(Y[i],mean[i],taum)
+   }
+  }"
+   dat    <- list(Y=Y,n=N,t =time)
+   init   <- list(mu1=96, mu3 = 271, mu2 = 5, mu4 = 5)
+   model  <- jags.model(textConnection(evi_model),
+                        inits=init,data = dat,n.chains=2,quiet=TRUE)
+
+   update(model, 10000, progress.bar="none")
+
+   samp   <- coda.samples(model, 
+             variable.names=c("like"), 
+             n.iter=20000, progress.bar="none")
+   # Compute DIC
+DIC_logit  <- dic.samples(model,n.iter=20000,progress.bar="none")
+
+# Compute WAIC
+like       <- rbind(samp[[1]],samp[[2]]) # Combine the two chains
+fbar       <- colMeans(like)
+Pw         <- sum(apply(log(like),2,var))
+WAIC_logit <- -2*sum(log(fbar))+2*Pw
+DIC_logit
+WAIC_logit
+
+```
+
+```{r}
+evi_model2 <- "model{
+
+   # Likelihood
+   for(i in 1:n){
+      Y[i] ~ dnorm(mean[i],taum)
+      mean[i] <-beta0 + 1/(1+exp(-beta2*(t[i]-beta1))) - 1/(1+exp(-beta4*(t[i]-beta3)))
+   }
+
+   # Prior
+   beta0 ~ dlnorm(0,0.01)
+   beta1  ~ dnorm(mu1,tau1)T(0,)
+   beta2 ~ dnorm(mu2,tau2)T(0,) 
+   beta3 ~ dnorm(mu3,tau3)T(0,)  
+   beta4 ~ dnorm(mu4,tau4)T(0,)
+   mu1 ~ dunif(0, 183)
+   mu3 ~ dunif(182, 360)
+   mu2 ~ dunif(0.1, 20)
+   mu4 ~ dunif(0.1, 20)
+   taum ~ dgamma(0.1,0.1)
+   tau1 ~ dgamma(0.1,0.1)
+   tau2 ~ dgamma(0.1,0.1)
+   tau3 ~ dgamma(0.1,0.1)
+   tau4 ~ dgamma(0.1,0.1)
+   # WAIC calculations
+   for(i in 1:n){
+     like[i]  = dnorm(Y[i],mean[i],taum)
+   }
+  }"
+   library(rjags)
+   dat    <- list(Y=Y,n=N,t =time)
+   init   <- list(mu1=96, mu3 = 271, mu2 = 5, mu4 = 5)
+   model  <- jags.model(textConnection(evi_model),
+                        inits=init,data = dat,n.chains=2,quiet=TRUE)
+
+   update(model, 10000, progress.bar="none")
+
+   samp1   <- coda.samples(model, 
+             variable.names=c("like"), 
+             n.iter=20000, progress.bar="none")
+   # Compute DIC
+DIC_logit  <- dic.samples(model,n.iter=20000,progress.bar="none")
+
+# Compute WAIC
+like       <- rbind(samp1[[1]],samp1[[2]]) # Combine the two chains
+fbar       <- colMeans(like)
+Pw         <- sum(apply(log(like),2,var))
+WAIC_logit <- -2*sum(log(fbar))+2*Pw
+DIC_logit
+WAIC_logit
+
+```
+
+```{r}
+Y = EVI_Data[EVI_Data$Year == 2006,]$EVI; time = EVI_Data[EVI_Data$Year == 2006,]$DOY;
+N = length(Y)
+evi_model <- "model{
+
+   # Likelihood
+   for(i in 1:n){
+      Y[i] ~ dnorm(mean[i],taum)
+      mean[i] <- beta0 + 1/(1+exp(-beta2*(t[i]-beta1))) - 1/(1+exp(-beta4*(t[i]-beta3)))
+   }
+
+   # Prior
+   beta1  ~ dnorm(mu1,tau1)T(0,250)
+   beta2 ~ dnorm(mu2,tau2)T(0,) 
+   beta3 ~ dnorm(mu3,tau3)T(0,)  
+   beta4 ~ dnorm(mu4,tau4)T(0,)
+   mu1 ~ dunif(0, 183)
+   mu3 ~ dunif(182, 360)
+   mu2 ~ dunif(0.1, 20)
+   mu4 ~ dunif(0.1, 20)
+   beta0 ~dnorm(0,0.01)T(0,)
+   taum ~ dgamma(0.1,0.1)
+   tau1 ~ dgamma(0.1,0.1)
+   tau2 ~ dgamma(0.1,0.1)
+   tau3 ~ dgamma(0.1,0.1)
+   tau4 ~ dgamma(0.1,0.1)
+  }"
+   library(rjags)
+   dat    <- list(Y=Y,n=N,t =time)
+   init   <- list(mu1=96, mu3 = 271, mu2 = 5, mu4 = 5)
+   model  <- jags.model(textConnection(evi_model),
+                        inits=init,data = dat,n.chains=2,quiet=TRUE)
+
+   update(model, 10000, progress.bar="none")
+
+   samp   <- coda.samples(model, 
+             variable.names=c("beta1"), 
+             n.iter=20000, progress.bar="none")
+   sum <- summary(samp)
+   q <- sum$quantiles
+   names(q)= NULL
+   Table = data.frame(q)
+```
+
+
+
+```{r}
+for(yr in 1:num_years){
+  year = uniq_years[yr]
+  
+Y = EVI_Data[EVI_Data$Year == year,]$EVI; time = EVI_Data[EVI_Data$Year == year,]$DOY;
+N = length(Y)
+evi_model <- "model{
+
+   # Likelihood
+   for(i in 1:n){
+      Y[i] ~ dnorm(mean[i],taum)
+      mean[i] <- beta0 + 1/(1+exp(-beta2*(t[i]-beta1))) - 1/(1+exp(-beta4*(t[i]-beta3)))
+   }
+
+   # Prior
+   beta1  ~ dnorm(mu1,tau1)T(0,)
+   beta2 ~ dnorm(mu2,tau2)T(0,) 
+   beta3 ~ dnorm(mu3,tau3)T(0,)  
+   beta4 ~ dnorm(mu4,tau4)T(0,)
+   mu1 ~ dunif(0, 150)
+   mu3 ~ dunif(182, 360)
+   mu2 ~ dunif(0.1, 20)
+   mu4 ~ dunif(0.1, 20)
+   beta0 ~dnorm(0,0.1)T(0,)
+   taum ~ dgamma(0.1,0.1)
+   tau1 ~ dgamma(0.01,0.01)
+   tau2 ~ dgamma(0.1,0.1)
+   tau3 ~ dgamma(0.1,0.1)
+   tau4 ~ dgamma(0.1,0.1)
+  }"
+   library(rjags)
+   dat    <- list(Y=Y,n=N,t =time)
+   init   <- list(mu1=96, mu3 = 271, mu2 = 5, mu4 = 5)
+   model  <- jags.model(textConnection(evi_model),
+                        inits=init,data = dat,n.chains=2,quiet=TRUE)
+
+   update(model, 10000, progress.bar="none")
+
+   samp   <- coda.samples(model, 
+             variable.names=c("beta1"), 
+             n.iter=20000, progress.bar="none")
+   sum <- summary(samp)
+   q <- sum$quantiles
+   names(q)= NULL
+   Table[as.character(year)] = q}
+  Table 
+```
+
+```{r}
+Y = EVI_Data[EVI_Data$Year == 1994,]$EVI; time = EVI_Data[EVI_Data$Year == 1994,]$DOY;
+N = length(Y)
+ library(splines)
+
+ J <- 10       # Number of basis functions
+ B <- bs(time,J)  # Specify the basis functions
+evi_model <- "model{
+
+
+   # Likelihood
+   for(i in 1:n){
+      Y[i]    ~ dnorm(mean[i],taue)T(0,)
+      mean[i] <- mu + inprod(B[i,],beta[])
+   }
+
+   # Prior
+   mu   ~ dnorm(0,0.01)
+   taue ~ dgamma(0.1,0.1)
+   for(j in 1:J){
+    beta[j] ~ dnorm(0,taue*taub)
+   }
+   taub ~ dgamma(0.1,0.1)
+
+  }"
+   library(rjags)
+   dat    <- list(Y=Y,n=N,B=B, J=J)
+   init   <- list(mu=mean(Y),beta=rep(0,J),taue=1/var(Y))
+   model  <- jags.model(textConnection(evi_model),
+                        inits=init,data = dat,n.chains=2,quiet=TRUE)
+
+   update(model, 10000, progress.bar="none")
+
+   samp   <- coda.samples(model, 
+             variable.names=c("beta","mean"), 
+             n.iter=20000, progress.bar="none")
+   sum <- summary(samp)
+   q <- sum$quantiles
+
+   plot(time,Y,xlab="time",ylab="EVI",
+        cex.lab=1.5,cex.axis=1.5)
+
+   lines(time,q[11:dim(q)[1],1],col=2,lty=2) # 0.025 quantile (lower bound)
+   lines(time,q[11:dim(q)[1],3],col=2,lty=1) # 0.500 quantile (median)
+   lines(time,q[11:dim(q)[1],5],col=2,lty=2) # 0.975 quantile (upper bound)
+
+   legend("topleft",c("Median","95% interval"),
+          lty=1:2,col=2,bg=gray(1),inset=0.01,cex=1)
+```
+```{r}
+library(tgp)
+Y = EVI_Data[EVI_Data$Year == 2019,]$EVI; time = EVI_Data[EVI_Data$Year == 2019,]$DOY;
+N = length(Y)
+xx=seq(100,200,length=100)
+sin.bgp <- bgp(X=time, Z=Y, XX=xx, verb=0)
+plot(sin.bgp, main='GP,', layout='surf')
+```
+
