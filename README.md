@@ -1,4 +1,6 @@
 # Applied Bayesian Statistics
+- ![#f03c15](https://placehold.co/15x15/f03c15/f03c15.png) Required Toolboxes: [JAGS](http://sourceforge.net/projects/mcmc-jags/files/), [STAN](https://mc-stan.org/)
+
 This repository consist of a compendium of assignments and their respective solutions for an advanced course in Applied Bayesian Statistics. It imparts a comprehensive understanding of theoretical, computational, and practical aspects of the Bayesian statistics.
 Throughout the course, the following topics are covered in-depth:
   - A contrastive examination of Bayesian and frequentist methodologies
