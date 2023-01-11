@@ -1,4 +1,4 @@
-# Advanced Applied Bayesian Statistics
+#Applied Bayesian Statistics
 This repository consist of a compendium of assignments and their respective solutions for an advanced course in Applied Bayesian Statistics. It imparts a comprehensive understanding of theoretical, computational, and practical aspects of the Bayesian statistics.
 Throughout the course, the following topics are covered in-depth:
   - A contrastive examination of Bayesian and frequentist methodologies
