@@ -2,5 +2,5 @@
 * text=auto
 *.[Rr]md  linguist-language=R
 *.pdf  linguist-language=R
-*.html linguist-detectable
+*.html linguist-language=html
 # *.* linguist-language=R
